@@ -1,0 +1,79 @@
+# Note that if you are working on the analysis development locally, i.e. outside
+# of the REANA platform, you can proceed as follows:
+#
+#   $ cd reana-demo-lhcb-d2pimumu
+#   $ mkdir -p yadage-local-run/yadage-inputs
+#   $ cd yadage-local-run
+#   $ cp -a ../code yadage-inputs
+#   $ yadage-run . ../workflow/yadage/workflow.yaml \
+#        -p data=data/D2PiMuMuOS.root \
+#        -p optimise=code/Optimise.C \
+#        -p modelfixing=code/ModelFixing.C \
+#        -p massfit=code/OSMassFit.C \
+#        -d initdir=`pwd`/yadage-inputs
+#   $ firefox massfit/plot.png
+
+stages:
+  - name: optimise
+    dependencies: [init]
+    scheduler:
+      scheduler_type: 'singlestep-stage'
+      parameters:
+        optimise: {stages: init, output: optimise, unwrap: true}
+        datafile: {stages: init, output: datafile, unwrap: true}
+      step:
+        process:
+          process_type: 'interpolated-script-cmd'
+          script: root -b -q '{modelfixing}("{datafile}", "{workdir}/")'
+        publisher:
+          publisher_type: 'frompar-pub'
+          outputmap:
+            plot_2d_optisation: '{workdir}/2D_Optimisation_Pi.pdf'
+            plot_mumumass: '{workdir}/MuMuMass_Pi.pdf'
+        environment:
+          environment_type: 'docker-encapsulated'
+          image: 'reanahub/reana-env-root6'
+
+  - name: modelfixing
+    dependencies: [optimise]
+    scheduler:
+      scheduler_type: 'singlestep-stage'
+      parameters:
+        modelfixing: {stages: init, output: modelfixing, unwrap: true}
+        datafile: {stages: init, output: datafile, unwrap: true}
+        outfilename: '{workdir}/PhiModels.root'
+      step:
+        process:
+          process_type: 'interpolated-script-cmd'
+          script: root -b -q '{modelfixing}("{datafile}", "{outfilename}")'
+        publisher:
+          publisher_type: 'frompar-pub'
+          outputmap:
+            phimodels: outfilename
+        environment:
+          environment_type: 'docker-encapsulated'
+          image: 'reanahub/reana-env-root6'
+
+  - name: massfit
+    dependencies: [modelfixing]
+    scheduler:
+      scheduler_type: 'singlestep-stage'
+      parameters:
+        massfit: {stages: init, output: massfit, unwrap: true}
+        datafile: {stages: init, output: datafile, unwrap: true}
+        phimodels: {stages: modelfixing, output: phimodels, unwrap: true}
+      step:
+        process:
+          process_type: 'interpolated-script-cmd'
+          script: root -b -q '{massfit}("{datafile}", "{phimodels}", "{workdir}/")'
+        publisher:
+          publisher_type: 'frompar-pub'
+          outputmap:
+            plot_low_dimuon_signal: '{workdir}/low_dimuon_signal.pdf'
+            plot_high_dimuon_signal: '{workdir}/high_dimuon_signal.pdf'
+            plot_eta: '{workdir}/eta.pdf'
+            plot_rho_omega: '{workdir}/rho_omega.pdf'
+            plot_phi: '{workdir}/phi.pdf'
+        environment:
+          environment_type: 'docker-encapsulated'
+          image: 'reanahub/reana-env-root6'
