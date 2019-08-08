@@ -2,6 +2,26 @@
 #include "fstream"
 #include <math.h>
 
+#include "RooAddPdf.h"
+#include "RooRealVar.h"
+#include "RooDataSet.h"
+#include "RooPlot.h"
+#include "RooFitResult.h"
+
+#include "TFile.h"
+#include "TMath.h"
+#include "TTree.h"
+#include "TCanvas.h"
+#include "TLatex.h"
+#include "TLorentzVector.h"
+#include "TGraphErrors.h"
+#include "TAxis.h"
+
+#include "TSystem.h"
+#include "TROOT.h"
+
+#include "RooFitHeaders.h"
+
 using namespace RooFit;
 using namespace TMath;
 using namespace std;
@@ -117,35 +137,17 @@ void PlotMuMuMass(RooRealVar* MuMuMass, RooDataSet* Data, string filepath) {
     c.SaveAs(TString(filepath+"/MuMuMass.pdf"));
 }
 
-const char * ReadTreeLocationFromFileName(const char* inputfilename){
-
-  // Get the tree
-  if ( strncmp(inputfilename,"small.root", 5) ) {
-    return "DecayTree";
-  }
-  else {
-    return "D2PimumuOSTuple/DecayTree";
-  }
-}
 
 void OSMassFit(const char* inputfilename, const char* directory, string filepath)
 {
-  // Load the custom root fit headers
-
   cout << "Running OSMassFit" << endl;
 
   // Load the custom root fit headers
-  // R__ADD_LIBRARY_PATH($FOODIR) // if needed
-  // R__LOAD_LIBRARY(code/RooFitHeaders.h)
-  // R__LOAD_LIBRARY(code/lhcbStyle.C)
-  gSystem->Load("RooFitHeaders.h");
-  gSystem->Load("lhcbStyle.C");
+   gROOT->ProcessLine(".L lhcbstyle.C");
 
   // Get the data
   TFile f1(inputfilename, "read");
-  auto tree_location = ReadTreeLocationFromFileName(inputfilename);
-
-  TTree* D2PimumuTree = (TTree*) f1.Get(tree_location);
+  TTree* D2PimumuTree = (TTree*) f1.Get("D2PimumuOSTuple/DecayTree");
 
   // Limits
   Double_t MassMin = 1775.0;
@@ -211,6 +213,8 @@ void OSMassFit(const char* inputfilename, const char* directory, string filepath
   All_Data->merge(MuMu_Data);
   PlotMuMuMass(MuMuMass, All_Data, filepath);
 
+
+
   // TFile *tf(directory.c_str());
   TFile *tf = new TFile(directory);
   RooWorkspace* w = (RooWorkspace*)tf->Get("w");
@@ -220,19 +224,18 @@ void OSMassFit(const char* inputfilename, const char* directory, string filepath
   RooRealVar *nSig_Dp = w->var("nSig_Dp");
   RooRealVar *nSig_Ds = w->var("nSig_Ds");
   RooRealVar *nBkg = w->var("nBkg");
-  //RooRealVar *K_CombBG = w->var("K_{CombBG}");
-  RooRealVar *c0 = w->var("c0");
-  RooRealVar *c1 = w->var("c1");
+//  RooRealVar *K_CombBG = w->var("K_{CombBG}");
+//  RooRealVar *c0 = w->var("c0");
+//  RooRealVar *c1 = w->var("c1");
 
   // Fix signal model to fit on phi channel
   RooArgSet* parameters = (RooArgSet*)Model->getParameters(All_Data);
   parameters->remove(*nBkg);
   parameters->remove(*nSig_Dp);
   parameters->remove(*nSig_Ds);
-  // parameters->remove(*K_CombBG);
-
-  //parameters->remove(*c0);
-  //parameters->remove(*c1);
+//  parameters->remove(*K_CombBG);
+//  parameters->remove(*c0);
+//  parameters->remove(*c1);
 
   TIterator* iter = parameters->createIterator();
   for(int i=0; i<parameters->getSize(); i++){

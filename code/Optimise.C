@@ -3,6 +3,24 @@
 #include <math.h>
 #include "string.h"
 
+#include "RooAddPdf.h"
+#include "RooRealVar.h"
+#include "RooDataSet.h"
+#include "RooPlot.h"
+#include "RooFitResult.h"
+
+#include "TFile.h"
+#include "TMath.h"
+#include "TLorentzVector.h"
+#include "TTree.h"
+#include "TCanvas.h"
+#include "TH2D.h"
+#include "TGraphErrors.h"
+
+#include "TSystem.h"
+
+#include "RooFitHeaders.h"
+
 using namespace RooFit;
 using namespace TMath;
 using namespace std;
@@ -109,19 +127,23 @@ void PlotMuMuMass(RooRealVar* MuMuMass, RooDataSet* Data, string filepath) {
     c.SaveAs(TString(filepath+"/MuMuMass_"+bachelor+".pdf"));
 }
 
+/*
+void Plot(int numIters,
+  Double_t BDT_cuts[numIters],
+  Double_t Significance_FoM[numIters],
+  Double_t BDT_cuts_err[numIters], Double_t Significance_FoM_err[numIters], string filepath)
+  {
+    TGraphErrors * gr = new TGraphErrors(numIters, BDT_cuts, Significance_FoM, BDT_cuts_err, Significance_FoM_err);
 
-void Plot(int numIters, Double_t BDT_cuts[numIters], Double_t Significance_FoM[numIters], Double_t BDT_cuts_err[numIters], Double_t Significance_FoM_err[numIters], string filepath) {
-  TGraphErrors * gr = new TGraphErrors(numIters, BDT_cuts, Significance_FoM, BDT_cuts_err, Significance_FoM_err);
+    gr->SetTitle("Optimisation");
+    gr->GetXaxis()->SetTitle("BDT>");
+    gr->GetYaxis()->SetTitle("Significance FoM");
 
-  gr->SetTitle("Optimisation");
-  gr->GetXaxis()->SetTitle("BDT>");
-  gr->GetYaxis()->SetTitle("Significance FoM");
-
-  TCanvas c("c", "c", 800, 800);
-  gr->Draw("AP");
-  c.SaveAs(TString(filepath+"/Optimisation_"+bachelor+".pdf"));
-
+    TCanvas c("c", "c", 800, 800);
+    gr->Draw("AP");
+    c.SaveAs(TString(filepath+"/Optimisation_"+bachelor+".pdf"));
 }
+*/
 
 void Plot(TH2D* h, string filepath) {
   TCanvas c("c", "c", 800, 800);
@@ -131,25 +153,10 @@ void Plot(TH2D* h, string filepath) {
   c.SaveAs(TString(filepath+"/2D_Optimisation_"+bachelor+".pdf"));
 }
 
-const char * ReadTreeLocationFromFileName(const char* inputfilename){
-
-  // Get the tree
-  if ( strncmp(inputfilename,"small.root", 5) ) {
-    return "DecayTree";
-  }
-  else {
-    return "D2PimumuOSTuple/DecayTree";
-  }
-}
 
 void Optimise(const char* inputfilename, string filepath)
 {
   cout << "Running Optimise" << endl;
-
-    // Load the custom root fit headers
-  // R__ADD_LIBRARY_PATH($FOODIR) // if needed
-  // R__LOAD_LIBRARY(code/RooFitHeaders.h)
-  gSystem->Load("RooFitHeaders.h");
 
   // Limits
   Double_t MassMin = 1775.0;
@@ -157,10 +164,7 @@ void Optimise(const char* inputfilename, string filepath)
 
   // Get the data
   TFile f1(inputfilename, "read");
-  cout << inputfilename << endl;
-  auto tree_location = ReadTreeLocationFromFileName(inputfilename);
-  cout << tree_location << endl;
-  TTree* D2PimumuTree = (TTree*) f1.Get(tree_location);
+  TTree* D2PimumuTree = (TTree*) f1.Get("D2PimumuOSTuple/DecayTree");
 
   // Disable all branches and only enable ones we need
   D2PimumuTree->SetBranchStatus("*",0);
@@ -203,7 +207,6 @@ void Optimise(const char* inputfilename, string filepath)
 
 
   // Create the RooArgSet that holds the variables
-  // root [#0] ERROR:InputArguments -- RooArgSet::checkForDup: ERROR argument with name Model_Int[D_MM|fit_nll_Model_All_Data]_Norm[D_MM] is already in this set
   RooArgSet D2PimumuSet(*D_MM, *BDT, *muplus_PX, *muplus_PY, *muplus_PZ, *muminus_PX, *muminus_PY, *muminus_PZ, *muplus_PIDmu);
   D2PimumuSet.add(*muminus_PIDmu);
   D2PimumuSet.add(*piplus_PIDK);

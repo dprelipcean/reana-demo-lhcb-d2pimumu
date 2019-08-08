@@ -2,6 +2,28 @@
 #include "fstream"
 #include <math.h>
 
+#include "RooAddPdf.h"
+#include "RooRealVar.h"
+#include "RooCBShape.h"
+#include "RooExponential.h"
+#include "RooPlot.h"
+#include "RooHist.h"
+#include "RooDataSet.h"
+#include "RooWorkspace.h"
+
+#include "TFile.h"
+#include "TAxis.h"
+#include "TLine.h"
+#include "TCanvas.h"
+#include "TPad.h"
+#include "TTree.h"
+#include "TLorentzVector.h"
+
+#include "TROOT.h"
+#include "TSystem.h"
+
+#include "RooFitHeaders.h"
+
 using namespace RooFit;
 using namespace TMath;
 using namespace std;
@@ -131,36 +153,20 @@ double InvMass_mumu(RooDataSet* Data, int i) {
 
 }
 
-const char * ReadTreeLocationFromFileName(const char* inputfilename){
-
-  // Get the tree
-  if ( strncmp(inputfilename,"small.root", 5) ) {
-    return "DecayTree";
-  }
-  else {
-    return "D2PimumuOSTuple/DecayTree";
-  }
-}
-
 
 void ModelFixing(const char* inputfilename, const char* phimodels_filename){
 
   cout << "Running ModelFixing" << endl;
 
-  // Load the custom root fit headers
-  // R__ADD_LIBRARY_PATH(gSystem->pwd()) // if needed
-  // R__LOAD_LIBRARY(code/RooFitHeaders.h)
-  gSystem->Load("RooFitHeaders.h");
-
   // Limits
   Double_t MassMin = 1775.0;
   Double_t MassMax = 2050.0;
 
+  cout << "Start analysis" << endl;
+
   // Get the data
   TFile f1(inputfilename, "read");
-  auto tree_location = ReadTreeLocationFromFileName(inputfilename);
-
-  TTree* D2PimumuTree = (TTree*) f1.Get(tree_location);
+  TTree* D2PimumuTree = (TTree*) f1.Get("D2PimumuOSTuple/DecayTree");
 
   // Disable all branches and only enable ones we need
   D2PimumuTree->SetBranchStatus("*",0);
